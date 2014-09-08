@@ -1,0 +1,52 @@
+from flask import request, render_template, Flask, redirect
+app = Flask(__name__)
+from wtforms import Form, BooleanField, TextField, PasswordField, validators
+from collections import defaultdict
+import pickle, os
+
+def load_data(filename, type):
+    if not os.path.exists(filename):
+        data = defaultdict(int)
+        with open(filename, 'wb') as f:
+            pass
+    else:
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+    return data
+
+stats = load_data('./stats.dat', defaultdict(int))
+urls = load_data('./urls.dat', dict)
+
+class ShortenerForm(Form):
+    full_url = TextField('Enter the url you wish to shorten', [validators.DataRequired()])
+    short_url = TextField('Enter desired alias', [validators.DataRequired()])
+    # accept_tos = BooleanField('I grant you rights to my soul.', [validators.Required()])
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    # return 'Hi'
+    form = ShortenerForm(request.form)
+    if request.method == 'POST' and form.validate():
+        short_url = form.short_url.data
+        if short_url in urls.keys():
+            return render_template("try_again.html", form=form)
+        full_url = form.full_url.data
+        urls[short_url] = full_url
+        with open('./urls.dat', 'wb') as f:
+            pickle.dump(urls, f)
+        return 'Original url:\t'+full_url+'<br>Short url:\t'+short_url
+    return render_template('shorten.html', form=form)
+
+@app.route('/<short_url>')
+def short_to_full(short_url):
+    try:
+        full_url = urls[short_url]
+        stats[short_url] += 1
+        with open('stats.dat', 'wb') as st:
+            pickle.dump(stats, st)
+        return redirect(full_url, code=302)
+    except KeyError:
+        return "This url is not in our system yet."
+
+if __name__ == '__main__':
+    app.run()
