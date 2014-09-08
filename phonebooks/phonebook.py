@@ -69,7 +69,10 @@ if __name__ == '__main__':
                 'lookup':lookup,
                 'reverse_lookup':reverse_lookup,
                 'remove':remove}
-    dispatch[command](cursor, *args)
+    try:
+        dispatch[command](cursor, *args)
+    except KeyError:
+        lookup(cursor, command, *args)
 
     db_conn.commit()
     db_conn.close()
